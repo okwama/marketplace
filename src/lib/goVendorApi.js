@@ -82,6 +82,50 @@ export async function fetchVendorOrders(base, token) {
   return data.orders || [];
 }
 
+export async function fetchVendorImagekitAuth(base, token) {
+  const res = await fetch(`${base}/v1/vendor/imagekit/auth`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: 'application/json',
+    },
+  });
+  const text = await res.text();
+  let data;
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    data = {};
+  }
+  if (!res.ok) {
+    throw new Error(data?.error || text || res.statusText);
+  }
+  return data;
+}
+
+export async function updateVendorProductImage(base, token, productId, imageUrl) {
+  const res = await fetch(`${base}/v1/vendor/products/${encodeURIComponent(productId)}/image-url`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({ imageUrl }),
+  });
+  const text = await res.text();
+  let data;
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    data = {};
+  }
+  if (!res.ok) {
+    throw new Error(data?.error || text || res.statusText);
+  }
+  return data;
+}
+
 /** Map Go API order row to MarketplaceDemoContext order shape. */
 export function mapApiOrderToDemo(o) {
   const amount = Math.round(Number(o.totalCents || 0) / 100);
