@@ -1,0 +1,45 @@
+:root {
+  /* Kenyan Orange - Primary Brand Color */
+  --primary: #FF7900;
+  --primary-light: #FF9E40;
+  --primary-dark: #cc6100;
+  
+  /* Dark Emerald - Secondary/Success */
+  --secondary: #006045;
+  --secondary-light: #008761;
+  --secondary-dark: #00402e;
+
+  /* WhatsApp Green */
+  --wa-green: #25D366;
+  --wa-green-dark: #128C7E;
+
+  /* Clean Slate & Grays */
+  --bg-color: #F8FAFC;
+  --surface-color: #FFFFFF;
+  --text-main: #0F172A;
+  --text-muted: #64748B;
+  --border-color: #E2E8F0;
+
+  /* Alerts */
+  --danger: #EF4444;
+  --warning: #F59E0B;
+
+  /* Spacing */
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2rem;
+
+  /* Border Radius */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 1rem;
+  --radius-full: 9999px;
+
+  /* Shadows (Glassmorphism & Depth) */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-floating: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
