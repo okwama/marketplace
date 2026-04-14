@@ -82,6 +82,26 @@ export async function fetchVendorOrders(base, token) {
   return data.orders || [];
 }
 
+export async function fetchVendorProducts(base, token) {
+  const res = await fetch(`${base}/v1/vendor/products`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: 'application/json',
+    },
+  });
+  const text = await res.text();
+  let data;
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    data = {};
+  }
+  if (!res.ok) {
+    throw new Error(data?.error || text || res.statusText);
+  }
+  return data.products || [];
+}
+
 export async function fetchVendorImagekitAuth(base, token) {
   const res = await fetch(`${base}/v1/vendor/imagekit/auth`, {
     method: 'POST',
@@ -126,6 +146,42 @@ export async function updateVendorProductImage(base, token, productId, imageUrl)
   return data;
 }
 
+export async function uploadImageToImageKit(base, token, file, vendorId) {
+  if (!(file instanceof File)) {
+    throw new Error('Select an image file first');
+  }
+  const auth = await fetchVendorImagekitAuth(base, token);
+  const uploadURL = 'https://upload.imagekit.io/api/v1/files/upload';
+  const form = new FormData();
+  form.append('file', file);
+  form.append('fileName', `${Date.now()}-${file.name || 'product-image'}`);
+  form.append('useUniqueFileName', 'true');
+  form.append('folder', `/marketplace/vendors/${vendorId}`);
+  form.append('publicKey', auth.publicKey);
+  form.append('token', auth.token);
+  form.append('expire', String(auth.expire));
+  form.append('signature', auth.signature);
+  const res = await fetch(uploadURL, {
+    method: 'POST',
+    body: form,
+  });
+  const text = await res.text();
+  let data;
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    data = {};
+  }
+  if (!res.ok) {
+    throw new Error(data?.message || text || res.statusText);
+  }
+  const uploadedURL = data?.url || data?.thumbnailUrl || '';
+  if (!uploadedURL) {
+    throw new Error('Image upload succeeded but no URL was returned');
+  }
+  return uploadedURL;
+}
+
 /** Map Go API order row to MarketplaceDemoContext order shape. */
 export function mapApiOrderToDemo(o) {
   const amount = Math.round(Number(o.totalCents || 0) / 100);
@@ -144,5 +200,25 @@ export function mapApiOrderToDemo(o) {
     status,
     riderId: o.riderId != null ? String(o.riderId) : null,
     otp: '',
+  };
+}
+
+/** Map Go API product row to existing demo product shape used by Vendor UI. */
+export function mapApiProductToDemo(p, vendorName = 'Vendor') {
+  return {
+    id: Number(p.id),
+    name: p.name || `Product #${p.id}`,
+    vendor: vendorName,
+    vendorId: Number(p.vendorId),
+    price: Math.round(Number(p.priceCents || 0) / 100),
+    originalPrice: null,
+    category: 'electronics',
+    image: p.imageUrl || '',
+    rating: 0,
+    reviews: 0,
+    badge: null,
+    description: 'Live product from database.',
+    inStock: p.inStock !== false,
+    variants: [],
   };
 }

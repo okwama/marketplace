@@ -55,25 +55,38 @@ export function VendorProductModal({
   initialProduct,
   onClose,
   onSave,
+  enableImageUpload = false,
 }) {
   const [form, setForm] = useState(() => buildInitialForm(mode, initialProduct));
+  const [imageFile, setImageFile] = useState(null);
+  const [imageURL, setImageURL] = useState(initialProduct?.image || '');
+  const [submitting, setSubmitting] = useState(false);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submitting) return;
+    setSubmitting(true);
     const preset = IMAGE_PRESETS.find((p) => p.id === form.imageKey) || IMAGE_PRESETS[4];
-    onSave({
-      name: form.name,
-      category: form.category,
-      price: form.price,
-      originalPrice: form.originalPrice.trim() === '' ? null : form.originalPrice,
-      description: form.description,
-      badge: form.badge.trim() === '' ? null : form.badge,
-      inStock: form.inStock,
-      image: preset.src,
-    });
-    onClose();
+    try {
+      const result = await onSave({
+        name: form.name,
+        category: form.category,
+        price: form.price,
+        originalPrice: form.originalPrice.trim() === '' ? null : form.originalPrice,
+        description: form.description,
+        badge: form.badge.trim() === '' ? null : form.badge,
+        inStock: form.inStock,
+        image: enableImageUpload ? (imageURL.trim() || initialProduct?.image || '') : preset.src,
+        imageFile,
+      });
+      if (result !== false) {
+        onClose();
+      }
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -116,7 +129,9 @@ export function VendorProductModal({
 
         <form onSubmit={handleSubmit} style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
           <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.45 }}>
-            Listing as <strong style={{ color: 'var(--text-main)' }}>{vendor?.name}</strong>. Demo only — stored in this browser session.
+            Listing as <strong style={{ color: 'var(--text-main)' }}>{vendor?.name}</strong>.
+            {' '}
+            {enableImageUpload ? 'Image uploads go to ImageKit and save to Postgres.' : 'Demo only — stored in this browser session.'}
           </p>
 
           <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--text-muted)' }}>
@@ -167,32 +182,57 @@ export function VendorProductModal({
             </label>
           </div>
 
-          <fieldset style={{ margin: 0, padding: 0, border: 'none' }}>
-            <legend style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 8 }}>Listing image (preset)</legend>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              {IMAGE_PRESETS.map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => set('imageKey', p.id)}
-                  style={{
-                    padding: 8,
-                    borderRadius: 10,
-                    border: form.imageKey === p.id ? '2px solid var(--primary)' : '1px solid var(--border-color)',
-                    background: form.imageKey === p.id ? 'rgba(255, 121, 0, 0.08)' : 'white',
-                    cursor: 'pointer',
-                    fontFamily: 'inherit',
-                    fontSize: 11,
-                    width: 76,
-                    textAlign: 'center',
-                  }}
-                >
-                  <img src={p.src} alt="" style={{ width: 56, height: 56, objectFit: 'contain', display: 'block', margin: '0 auto 4px' }} />
-                  {p.label}
-                </button>
-              ))}
-            </div>
-          </fieldset>
+          {enableImageUpload ? (
+            <fieldset style={{ margin: 0, padding: 0, border: 'none', display: 'grid', gap: 10 }}>
+              <legend style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 8 }}>Listing image (ImageKit)</legend>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--text-muted)' }}>
+                Upload image file
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setImageFile(e.target.files?.[0] || null)}
+                  style={{ padding: 10, borderRadius: 10, border: '1px solid var(--border-color)', fontSize: 14, fontFamily: 'inherit', background: 'white' }}
+                />
+              </label>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--text-muted)' }}>
+                Or paste image URL
+                <input
+                  type="url"
+                  value={imageURL}
+                  onChange={(e) => setImageURL(e.target.value)}
+                  placeholder="https://ik.imagekit.io/..."
+                  style={{ padding: 12, borderRadius: 10, border: '1px solid var(--border-color)', fontSize: 15, fontFamily: 'inherit' }}
+                />
+              </label>
+            </fieldset>
+          ) : (
+            <fieldset style={{ margin: 0, padding: 0, border: 'none' }}>
+              <legend style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 8 }}>Listing image (preset)</legend>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {IMAGE_PRESETS.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => set('imageKey', p.id)}
+                    style={{
+                      padding: 8,
+                      borderRadius: 10,
+                      border: form.imageKey === p.id ? '2px solid var(--primary)' : '1px solid var(--border-color)',
+                      background: form.imageKey === p.id ? 'rgba(255, 121, 0, 0.08)' : 'white',
+                      cursor: 'pointer',
+                      fontFamily: 'inherit',
+                      fontSize: 11,
+                      width: 76,
+                      textAlign: 'center',
+                    }}
+                  >
+                    <img src={p.src} alt="" style={{ width: 56, height: 56, objectFit: 'contain', display: 'block', margin: '0 auto 4px' }} />
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+          )}
 
           <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--text-muted)' }}>
             Badge (optional)
@@ -221,11 +261,11 @@ export function VendorProductModal({
           </label>
 
           <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
-            <button type="button" onClick={onClose} style={{ flex: 1, padding: 14, borderRadius: 12, border: '1px solid var(--border-color)', background: 'white', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+            <button type="button" disabled={submitting} onClick={onClose} style={{ flex: 1, padding: 14, borderRadius: 12, border: '1px solid var(--border-color)', background: 'white', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', opacity: submitting ? 0.7 : 1 }}>
               Cancel
             </button>
-            <button type="submit" className="btn-primary" style={{ flex: 1, padding: 14, borderRadius: 12, fontWeight: 600, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>
-              {mode === 'edit' ? 'Save changes' : 'Publish listing'}
+            <button type="submit" disabled={submitting} className="btn-primary" style={{ flex: 1, padding: 14, borderRadius: 12, fontWeight: 600, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: submitting ? 0.7 : 1 }}>
+              {submitting ? 'Saving...' : (mode === 'edit' ? 'Save changes' : 'Publish listing')}
             </button>
           </div>
         </form>

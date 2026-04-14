@@ -60,6 +60,7 @@ export function VendorView({ layoutMode = 'mobile' }) {
   const [apiVendorId, setApiVendorId] = useState(null);
   const [apiVendorMeta, setApiVendorMeta] = useState(null);
   const [apiOrdersRaw, setApiOrdersRaw] = useState(null);
+  const [apiProductsRaw, setApiProductsRaw] = useState(null);
   const approvedVendors = useMemo(
     () => vendors.filter((v) => getVendorEffectiveStatus(v) === 'approved'),
     [getVendorEffectiveStatus],
@@ -95,12 +96,15 @@ export function VendorView({ layoutMode = 'mobile' }) {
         setApiVendorId(Number(me.id));
         const orders = await goVendorApi.fetchVendorOrders(apiBase, t);
         setApiOrdersRaw(orders);
+        const products = await goVendorApi.fetchVendorProducts(apiBase, t);
+        setApiProductsRaw(products);
       } catch {
         goVendorApi.setStoredToken('');
         setApiToken('');
         setApiVendorMeta(null);
         setApiVendorId(null);
         setApiOrdersRaw(null);
+        setApiProductsRaw(null);
       }
     })();
   }, [apiBase]);
@@ -111,6 +115,7 @@ export function VendorView({ layoutMode = 'mobile' }) {
     setApiVendorId(null);
     setApiVendorMeta(null);
     setApiOrdersRaw(null);
+    setApiProductsRaw(null);
     navigate('/vendor/login', { replace: true });
   };
 
@@ -137,10 +142,27 @@ export function VendorView({ layoutMode = 'mobile' }) {
   );
   const openOrderCount = pendingOrders.length;
 
-  const vendorProducts = useMemo(
-    () => allProducts.filter((p) => p.vendorId === vendor.id),
-    [vendor.id, allProducts],
-  );
+  const vendorProducts = useMemo(() => {
+    if (apiBase && apiToken && apiProductsRaw != null && apiVendorId === vendor.id) {
+      return apiProductsRaw.map((p) => goVendorApi.mapApiProductToDemo(p, vendor.name));
+    }
+    return allProducts.filter((p) => p.vendorId === vendor.id);
+  }, [apiBase, apiToken, apiProductsRaw, apiVendorId, vendor.id, vendor.name, allProducts]);
+
+  const persistProductImage = useCallback(async (productId, payload) => {
+    if (!apiBase || !apiToken) return '';
+    let imageURL = (payload?.image || '').trim();
+    if (payload?.imageFile instanceof File) {
+      imageURL = await goVendorApi.uploadImageToImageKit(apiBase, apiToken, payload.imageFile, vendor.id);
+    }
+    if (!imageURL) return '';
+    await goVendorApi.updateVendorProductImage(apiBase, apiToken, productId, imageURL);
+    setApiProductsRaw((prev) => {
+      if (!Array.isArray(prev)) return prev;
+      return prev.map((p) => (Number(p.id) === Number(productId) ? { ...p, imageUrl: imageURL } : p));
+    });
+    return imageURL;
+  }, [apiBase, apiToken, vendor.id]);
 
   const pageX = isDesktop ? 'clamp(20px, 3vw, 40px)' : 20;
 
@@ -289,6 +311,8 @@ export function VendorView({ layoutMode = 'mobile' }) {
             updateVendorProduct={updateVendorProduct}
             deleteVendorProduct={deleteVendorProduct}
             canVendorMutateProduct={canVendorMutateProduct}
+            apiMode={Boolean(apiBase && apiToken)}
+            onPersistProductImage={persistProductImage}
           />
         )}
         {activeTab === 'compliance' && (

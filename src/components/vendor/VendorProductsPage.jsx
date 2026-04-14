@@ -12,6 +12,8 @@ export function VendorProductsPage({
   updateVendorProduct,
   deleteVendorProduct,
   canVendorMutateProduct,
+  apiMode = false,
+  onPersistProductImage = null,
 }) {
   const [query, setQuery] = useState('');
   const [cat, setCat] = useState('all');
@@ -42,12 +44,23 @@ export function VendorProductsPage({
     setModalOpen(true);
   };
 
-  const handleSave = (payload) => {
+  const handleSave = async (payload) => {
     if (modalMode === 'edit' && editingProduct) {
       updateVendorProduct(vendor.id, editingProduct.id, payload);
+      if (apiMode && typeof onPersistProductImage === 'function') {
+        try {
+          const persistedURL = await onPersistProductImage(editingProduct.id, payload);
+          if (persistedURL) {
+            updateVendorProduct(vendor.id, editingProduct.id, { ...payload, image: persistedURL });
+          }
+        } catch (err) {
+          window.alert(`Image save failed: ${err?.message || 'Unknown error'}`);
+        }
+      }
     } else {
       addVendorProduct(vendor, payload);
     }
+    return true;
   };
 
   const handleDelete = (p) => {
@@ -66,7 +79,9 @@ export function VendorProductsPage({
               Your catalog
             </h2>
             <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 13, lineHeight: 1.5 }}>
-              Listings for <strong style={{ color: 'var(--text-main)' }}>{vendor.name}</strong>. New products appear in the client shop for this session.
+              Listings for <strong style={{ color: 'var(--text-main)' }}>{vendor.name}</strong>.
+              {' '}
+              {apiMode ? 'Products are loaded from Postgres when available.' : 'New products appear in the client shop for this session.'}
             </p>
           </div>
           <button
@@ -266,6 +281,7 @@ export function VendorProductsPage({
           initialProduct={editingProduct}
           onClose={() => { setModalOpen(false); setEditingProduct(null); }}
           onSave={handleSave}
+          enableImageUpload={apiMode}
         />
       )}
     </div>
